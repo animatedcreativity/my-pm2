@@ -424,7 +424,19 @@
                                                     class="flex-1 bg-gray-600 text-white px-3 py-2 rounded hover:bg-gray-700 text-sm">
                                                     <i class="fas fa-file-alt"></i> Logs
                                                 </button>
-                                                <button onclick="showEditProcessForm(${data.serverId}, '${serverName}', '${p.name}', '${p.script || ''}', '${p.cwd || ''}')"
+                                                <button 
+                                                    data-server-id="${data.serverId}"
+                                                    data-server-name="${btoa(serverName)}"
+                                                    data-process-name="${btoa(p.name)}"
+                                                    data-script="${btoa(p.script || '')}"
+                                                    data-cwd="${btoa(p.cwd || '')}"
+                                                    onclick="showEditProcessForm(
+                                                        parseInt(this.dataset.serverId), 
+                                                        atob(this.dataset.serverName), 
+                                                        atob(this.dataset.processName), 
+                                                        atob(this.dataset.script), 
+                                                        atob(this.dataset.cwd)
+                                                    )"
                                                     class="flex-1 bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 text-sm">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </button>
