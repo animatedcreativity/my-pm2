@@ -2,6 +2,23 @@
 
 A beautiful, self-hosted PM2 process manager with centralized monitoring across multiple servers.
 
+## Screenshots
+
+### Login
+![Login](screenshots/login.png)
+
+### Process Management
+![Processes](screenshots/processes.png)
+
+### Server Management
+![Servers](screenshots/servers.png)
+
+### Add Process
+![Add Process](screenshots/add-process.png)
+
+### Edit Process
+![Edit Process](screenshots/edit-process.png)
+
 ## Features
 
 - 🎨 Modern, polished GUI
