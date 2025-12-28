@@ -30,7 +30,7 @@ function getPM2List() {
         $execPath = $proc['pm2_env']['pm_exec_path'] ?? '';
         $script = $execPath;
         
-        if (in_array($execPath, ['/bin/bash', '/bin/sh'])) {
+        if (in_array($execPath, ['/bin/bash', '/bin/sh', '/usr/bin/bash', '/usr/bin/sh'])) {
             $args = $proc['pm2_env']['args'] ?? [];
             if (count($args) >= 2 && $args[0] === '-c') {
                 $script = $args[1];
