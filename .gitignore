@@ -1,0 +1,7 @@
+vendor/
+*.db
+*.log
+.DS_Store
+.env
+
+pm2-manager.db

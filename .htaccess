@@ -1,0 +1,16 @@
+<Files "pm2-manager.db">
+    Require all denied
+</Files>
+
+<FilesMatch "\.(db|sqlite|sqlite3)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^(composer\.json|\.env)$">
+    Require all denied
+</FilesMatch>
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ api.php?request=$1 [QSA,L]
