@@ -32,6 +32,8 @@
         let processLogs = [];
         let showProcessForm = false;
         let processFormData = { serverId: null, serverName: '', isEdit: false, name: '', oldName: '', command: '', cwd: '' };
+        let showAgentCommand = false;
+        let agentCommandData = {};
 
         function setToken(newToken) {
             token = newToken;
@@ -202,7 +204,12 @@
             });
 
             if (result) {
-                alert(`Server added! Unique Key: ${result.uniqueKey}\n\nUse this key in the agent script on your server.`);
+                agentCommandData = {
+                    serverName: name,
+                    uniqueKey: result.uniqueKey,
+                    command: `./agent.php ${window.location.origin} ${result.uniqueKey}`
+                };
+                showAgentCommand = true;
                 await loadData();
                 render();
             }
@@ -459,10 +466,19 @@
                                     <div><strong>Key:</strong> <code class="bg-gray-100 px-2 py-1 rounded text-xs">${s.unique_key}</code></div>
                                     <div><strong>Last seen:</strong> ${s.last_seen ? new Date(s.last_seen).toLocaleString() : 'Never'}</div>
                                 </div>
-                                <button onclick="deleteServer(${s.id})" 
-                                    class="w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-                                    <i class="fas fa-trash mr-2"></i>Delete Server
-                                </button>
+                                <div class="mb-3 p-3 bg-gray-900 rounded">
+                                    <code class="text-green-400 text-xs font-mono break-all">./agent.php ${window.location.origin} ${s.unique_key}</code>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="copyServerCommand(event, '${s.unique_key}')" 
+                                        class="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                                        <i class="fas fa-copy mr-2"></i>Copy Command
+                                    </button>
+                                    <button onclick="deleteServer(${s.id})" 
+                                        class="flex-1 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm">
+                                        <i class="fas fa-trash mr-2"></i>Delete
+                                    </button>
+                                </div>
                             </div>
                         `).join('')}
                     </div>
@@ -514,6 +530,95 @@
             if (!name) return;
             const host = prompt('Enter server host (optional):') || '';
             addServer(name, host);
+        }
+
+        function closeAgentCommandModal() {
+            showAgentCommand = false;
+            agentCommandData = {};
+            render();
+        }
+
+        function copyAgentCommand() {
+            const command = agentCommandData.command;
+            navigator.clipboard.writeText(command).then(() => {
+                const btn = event.target.closest('button');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i>Copied!';
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-green-600');
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
+        }
+
+        function copyServerCommand(event, uniqueKey) {
+            const command = `./agent.php ${window.location.origin} ${uniqueKey}`;
+            navigator.clipboard.writeText(command).then(() => {
+                const btn = event.target.closest('button');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i>Copied!';
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-green-600');
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
+        }
+
+        function renderAgentCommandModal() {
+            if (!showAgentCommand) return '';
+            
+            return `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="if(event.target === this) closeAgentCommandModal()">
+                    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-2xl font-bold text-gray-800">
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>Server Added Successfully!
+                            </h3>
+                            <button onclick="closeAgentCommandModal()" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-gray-600 mb-2">Server <strong>${agentCommandData.serverName}</strong> has been created.</p>
+                            <p class="text-gray-600">Copy and run this command on your server to connect the agent:</p>
+                        </div>
+                        
+                        <div class="bg-gray-900 rounded-lg p-4 mb-4">
+                            <code class="text-green-400 text-sm font-mono break-all">${agentCommandData.command}</code>
+                        </div>
+                        
+                        <div class="flex gap-3">
+                            <button onclick="copyAgentCommand()" 
+                                class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-copy mr-2"></i>Copy Command
+                            </button>
+                            <button onclick="closeAgentCommandModal()" 
+                                class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                                Close
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                            <p class="text-sm text-gray-700">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <strong>Keep agent running with PM2:</strong>
+                            </p>
+                            <code class="block mt-2 text-xs bg-white p-2 rounded border text-gray-800">pm2 start agent.php --name pm2-agent --interpreter php -- ${agentCommandData.command.replace('./agent.php ', '')}</code>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function renderProcessFormModal() {
@@ -632,7 +737,7 @@
             else if (currentView === 'servers') content = renderServers();
             else if (currentView === 'logs') content = renderLogs();
 
-            app.innerHTML = renderNav() + content + renderProcessFormModal() + renderProcessLogsModal();
+            app.innerHTML = renderNav() + content + renderProcessFormModal() + renderProcessLogsModal() + renderAgentCommandModal();
         }
 
         if (token) {
