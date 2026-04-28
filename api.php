@@ -11,6 +11,16 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
+function getDbType() {
+    return getenv('DB_TYPE') ?: 'sqlite';
+}
+
+function getOneHourAgoSQL() {
+    return getDbType() === 'mysql' 
+        ? "DATE_SUB(NOW(), INTERVAL 1 HOUR)" 
+        : "datetime('now', '-1 hour')";
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
@@ -108,11 +118,12 @@ if ($path[0] === 'processes') {
                 $process['last_output_timestamp'] = date('c', strtotime($lastOutput['timestamp']));
             }
             
+            $oneHourAgo = getOneHourAgoSQL();
             $errorStmt = $db->prepare("
                 SELECT message, timestamp 
                 FROM logs 
                 WHERE server_id = ? AND process_name = ? AND type = 'error'
-                AND timestamp > datetime('now', '-1 hour')
+                AND timestamp > $oneHourAgo
                 ORDER BY timestamp DESC, id DESC 
                 LIMIT 1
             ");
@@ -194,8 +205,7 @@ if ($path[0] === 'logs') {
             $query .= " WHERE " . implode(" AND ", $conditions);
         }
         
-        $query .= " ORDER BY l.timestamp DESC LIMIT ?";
-        $params[] = $limit;
+        $query .= " ORDER BY l.timestamp DESC LIMIT " . intval($limit);
         
         $stmt = $db->prepare($query);
         $stmt->execute($params);
@@ -256,16 +266,32 @@ if ($path[0] === 'agent') {
         foreach ($data['data'] as $log) {
             $stmt->execute([$server['id'], $log['process'], $log['type'], $log['message']]);
             
-            $cleanupStmt = $db->prepare("
-                DELETE FROM logs 
-                WHERE id IN (
-                    SELECT id FROM logs 
+            if (getDbType() === 'mysql') {
+                $cleanupStmt = $db->prepare("
+                    DELETE FROM logs 
                     WHERE server_id = ? AND process_name = ? 
-                    ORDER BY timestamp DESC 
-                    LIMIT -1 OFFSET 100
-                )
-            ");
-            $cleanupStmt->execute([$server['id'], $log['process']]);
+                    AND id NOT IN (
+                        SELECT id FROM (
+                            SELECT id FROM logs 
+                            WHERE server_id = ? AND process_name = ? 
+                            ORDER BY timestamp DESC 
+                            LIMIT 100
+                        ) AS keep_logs
+                    )
+                ");
+                $cleanupStmt->execute([$server['id'], $log['process'], $server['id'], $log['process']]);
+            } else {
+                $cleanupStmt = $db->prepare("
+                    DELETE FROM logs 
+                    WHERE id IN (
+                        SELECT id FROM logs 
+                        WHERE server_id = ? AND process_name = ? 
+                        ORDER BY timestamp DESC 
+                        LIMIT -1 OFFSET 100
+                    )
+                ");
+                $cleanupStmt->execute([$server['id'], $log['process']]);
+            }
         }
     }
     
